@@ -16,11 +16,12 @@ ds.enable(timestep)
 
 MASS = 7.84
 H_TARGET = 100.0
-g = 7.30699
+g = 9.81
+thrustConstants = 1.34255008
 # Скорость вращения винтов, при которой квадрокптер зависнет в воздухе
 # F = 4 * thrustConstants * VELOCITY ** 2 = MASS * g
 VELOCITY_S = 0
-ANGLE_BLADE_S = 0.785398
+ANGLE_BLADE_S = 0.785398 # math.pi / 4
 VELOCITY_R = 3.6
 ANGLE_BLADE_R = 0
 # Ускорение вызываемое наклоном квадрокоптера вперед/назад
@@ -35,18 +36,18 @@ K_p = 0.001
 K_d = -0.001
 
 
-#Разница между реальной высотой и желаемой
+# Разница между реальной высотой и желаемой
 def comp_e(h_target):
     if ds.getValue() == 100000:
         return h_target
     return h_target - ds.getValue()
 
 
-#Задание угла атаки лопасти
+# Задание угла атаки лопасти
 def set_angle_blade(v_vertical):
     global ANGLE_BLADE_R
-    ANGLE_BLADE_R = math.asin((math.sqrt(g * MASS) / 2 + K_p * comp_e(H_TARGET) + K_d * v_vertical) ** 2
-            / VELOCITY_R ** 2 * math.sin(ANGLE_BLADE_S))
+    # Арксинус дает нам угол, при котором квадрокоптер висит в воздухе
+    ANGLE_BLADE_R = math.asin((math.sqrt(g * MASS / (4 * thrustConstants))) ** 2 / VELOCITY_R ** 2 * math.sin(ANGLE_BLADE_S)) + K_p * comp_e(H_TARGET) + K_d * v_vertical
 
 
 imu = robot.getInertialUnit('inertial unit')
