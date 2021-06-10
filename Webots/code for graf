@@ -1,0 +1,56 @@
+import math
+import matplotlib.pyplot as plt
+
+
+MASS = 6.0
+H_TARGET = 100.0
+VELOCITY = 2 * math.sqrt(15)
+H_NOW = 0.0 #ds.GetValue()
+V_NOW = 0.0
+g = 10.0
+K_p = 0.001
+K_d = -0.01
+
+
+# Установление высоты, на которой находится робот
+def set_h(dt):
+    global H_NOW
+    H_NOW += dt * V_NOW
+
+
+# Установление скорости, которую имеет робот сейчас
+def set_v(dt):
+    global V_NOW
+    V_NOW += VELOCITY ** 2 / MASS - g
+
+
+# Вычисление невязки
+def comp_e(h_target):
+    return h_target - H_NOW #ds.GetValue()
+
+
+# Установка скорости вращения винта
+def set_velosity(dt):
+    global VELOCITY
+    VELOCITY = 2 * math.sqrt(15) + K_p * comp_e(H_TARGET) + K_d * V_NOW
+
+
+def main():
+    X = []
+    Y = []
+
+    for i in range(1000):
+        global H_NOW
+        set_h(1)
+        set_velosity(1)
+        set_v(1)
+        X.append(i)
+        Y.append(H_NOW)
+
+    plt.plot(X, Y, 'g-')
+    #plt.ylim(-100, 100)
+    plt.show()
+
+
+if __name__ == '__main__':
+    main()
