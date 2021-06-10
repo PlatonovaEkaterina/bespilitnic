@@ -1,0 +1,422 @@
+#VRML_SIM R2020b utf8
+WorldInfo {
+  coordinateSystem "NUE"
+}
+Viewpoint {
+  orientation 0.9293780491733352 -0.34176081526514523 -0.1394847191059613 5.455597848134316
+  position 1.9710700048782914 3.0891027489031386 2.938365305781438
+}
+DEF test_v2 Robot {
+  translation 1 0.025 1
+  children [
+    DEF Robot_4 Robot {
+      translation -0.13 0.01 0.11
+      children [
+        DEF prop4 Propeller {
+          shaftAxis 0 -1 0
+          thrustConstants -1 0
+          device RotationalMotor {
+            name "lop_4"
+          }
+          slowHelix Solid {
+            children [
+              DEF Лопасть Shape {
+                appearance CementTiles {
+                }
+                geometry Box {
+                  size 0.003 0.004 0.08
+                }
+              }
+            ]
+            name "propeller"
+            physics Physics {
+              mass 0.25
+            }
+          }
+        }
+        InertialUnit {
+          boundingObject USE Лопасть
+        }
+        DistanceSensor {
+          translation 0 -0.03 0
+          rotation 0 0 1 -1.5707996938995747
+          name "ds"
+          lookupTable [
+            0 0 0
+            1000 100000 0
+          ]
+        }
+      ]
+      name "robot(1)"
+      boundingObject USE Лопасть
+      physics Physics {
+        mass 1
+      }
+      controller "lop_4"
+      controllerArgs [
+        "4 f100 r100 b100 l100 ;"
+      ]
+    }
+    DEF Robot_3 Robot {
+      translation -0.13 0.01 -0.11
+      children [
+        DEF prop3 Propeller {
+          shaftAxis 0 1 0
+          device RotationalMotor {
+            name "lop_3"
+          }
+          slowHelix Solid {
+            children [
+              DEF Лопасть Shape {
+                appearance CementTiles {
+                }
+                geometry Box {
+                  size 0.003 0.004 0.08
+                }
+              }
+            ]
+            name "propeller"
+            physics Physics {
+              mass 0.25
+            }
+          }
+        }
+        InertialUnit {
+          boundingObject USE Лопасть
+        }
+        DistanceSensor {
+          translation 0 -0.03 0
+          rotation 0 0 1 -1.5707996938995747
+          name "ds"
+          lookupTable [
+            0 0 0
+            1000 100000 0
+          ]
+        }
+      ]
+      name "robot(2)"
+      boundingObject USE Лопасть
+      physics Physics {
+        mass 1
+      }
+      controller "lop_4"
+      controllerArgs [
+        "3 f100 r100 b100 l100 ;"
+      ]
+    }
+    DEF Robot_2 Robot {
+      translation 0.13 0.01 0.11
+      children [
+        InertialUnit {
+          boundingObject USE Лопасть
+        }
+        DEF prop2 Propeller {
+          shaftAxis 0 1 0
+          device RotationalMotor {
+            name "lop_2"
+          }
+          slowHelix Solid {
+            children [
+              DEF Лопасть Shape {
+                appearance CementTiles {
+                }
+                geometry Box {
+                  size 0.003 0.004 0.08
+                }
+              }
+            ]
+            name "propeller"
+            physics Physics {
+              mass 0.25
+            }
+          }
+        }
+        DistanceSensor {
+          translation 0 -0.03 0
+          rotation 0 0 1 -1.5707996938995747
+          name "ds"
+          lookupTable [
+            0 0 0
+            1000 100000 0
+          ]
+        }
+      ]
+      name "robot(3)"
+      boundingObject USE Лопасть
+      physics Physics {
+        mass 1
+      }
+      controller "lop_4"
+      controllerArgs [
+        "2 f100 r100 b100 l100 ;"
+      ]
+    }
+    DEF Robot_1 Robot {
+      translation 0.13 0.01 -0.11
+      children [
+        DEF prop1 Propeller {
+          shaftAxis 0 -1 0
+          thrustConstants -1 0
+          device RotationalMotor {
+            name "lop_1"
+          }
+          slowHelix Solid {
+            children [
+              DEF Лопасть Shape {
+                appearance CementTiles {
+                }
+                geometry Box {
+                  size 0.003 0.004 0.08
+                }
+              }
+            ]
+            name "propeller"
+            physics Physics {
+              mass 0.25
+            }
+          }
+        }
+        InertialUnit {
+          boundingObject USE Лопасть
+        }
+        DistanceSensor {
+          translation 0 -0.03 0
+          rotation 0 0 1 -1.5707996938995747
+          name "ds"
+          lookupTable [
+            0 0 0
+            1000 100000 0
+          ]
+        }
+      ]
+      name "robot(8)"
+      boundingObject USE Лопасть
+      physics Physics {
+        mass 1
+      }
+      controller "lop_4"
+      controllerArgs [
+        "1 f100 r100 b100 l100 ;"
+      ]
+    }
+    DEF body Solid {
+      children [
+        Transform {
+          translation -0.13 0 0
+          children [
+            Shape {
+              geometry Box {
+                size 0.006 0.003 0.25
+              }
+            }
+          ]
+        }
+        Transform {
+          translation 0.13 0 0
+          children [
+            Shape {
+              geometry Box {
+                size 0.006 0.003 0.25
+              }
+            }
+          ]
+        }
+        DEF Основание Shape {
+          appearance PBRAppearance {
+            baseColor 0.615686 0.694118 0.701961
+          }
+          geometry Box {
+            size 0.3 0.04 0.07
+          }
+        }
+      ]
+      name "body"
+      boundingObject USE Основание
+      physics Physics {
+        mass 0.84
+      }
+    }
+  ]
+  name "robot(3)"
+  boundingObject USE Основание
+  physics Physics {
+    mass 1
+  }
+  controller "bespilot"
+}
+DEF vers_2 Robot {
+  translation 1 0.025 0.1
+  children [
+    DEF lop_4 Solid {
+      translation -0.13 0.03 0.11
+      children [
+        DEF prop4 Propeller {
+          shaftAxis 0 -1 0
+          thrustConstants -1 0
+          device RotationalMotor {
+            name "lop_4"
+          }
+          slowHelix Solid {
+            children [
+              DEF Лопасть Shape {
+                appearance CementTiles {
+                }
+                geometry Box {
+                  size 0.003 0.004 0.08
+                }
+              }
+            ]
+            name "propeller"
+            physics Physics {
+            }
+          }
+        }
+      ]
+      name "solid(4)"
+      physics Physics {
+      }
+    }
+    DEF lop_3 Solid {
+      translation -0.13 0.03 -0.11
+      children [
+        DEF prop3 Propeller {
+          shaftAxis 0 1 0
+          device RotationalMotor {
+            name "lop_3"
+          }
+          slowHelix Solid {
+            children [
+              DEF Лопасть Shape {
+                appearance CementTiles {
+                }
+                geometry Box {
+                  size 0.003 0.004 0.08
+                }
+              }
+            ]
+            name "propeller"
+            physics Physics {
+            }
+          }
+        }
+      ]
+      name "solid(3)"
+      physics Physics {
+      }
+    }
+    DEF lop_1 Solid {
+      translation 0.13 0.03 -0.11
+      children [
+        DEF prop1 Propeller {
+          shaftAxis 0 -1 0
+          thrustConstants -1 0
+          device RotationalMotor {
+            name "lop_1"
+          }
+          slowHelix Solid {
+            children [
+              DEF Лопасть Shape {
+                appearance CementTiles {
+                }
+                geometry Box {
+                  size 0.003 0.004 0.08
+                }
+              }
+            ]
+            name "propeller"
+            physics Physics {
+            }
+          }
+        }
+      ]
+      name "solid(2)"
+      physics Physics {
+      }
+    }
+    DEF lop_2 Solid {
+      translation 0.13 0.03 0.11
+      children [
+        DEF prop2 Propeller {
+          shaftAxis 0 1 0
+          device RotationalMotor {
+            name "lop_2"
+          }
+          slowHelix Solid {
+            children [
+              DEF Лопасть Shape {
+                appearance CementTiles {
+                }
+                geometry Box {
+                  size 0.003 0.004 0.08
+                }
+              }
+            ]
+            name "propeller"
+            physics Physics {
+            }
+          }
+        }
+      ]
+      name "solid(1)"
+      physics Physics {
+      }
+    }
+    DEF body Solid {
+      children [
+        Transform {
+          translation -0.13 0 0
+          children [
+            Shape {
+              geometry Box {
+                size 0.006 0.003 0.25
+              }
+            }
+          ]
+        }
+        Transform {
+          translation 0.13 0 0
+          children [
+            Shape {
+              geometry Box {
+                size 0.006 0.003 0.25
+              }
+            }
+          ]
+        }
+        DEF Основание Shape {
+          appearance PBRAppearance {
+            baseColor 0.615686 0.694118 0.701961
+          }
+          geometry Box {
+            size 0.3 0.04 0.07
+          }
+        }
+      ]
+      name "body"
+      physics Physics {
+      }
+    }
+    DistanceSensor {
+      translation 0 -0.02 0
+      rotation 0 0 1 -1.5707996938995747
+      name "ds"
+      lookupTable [
+        0 0 0
+        0.2 1000 0
+      ]
+    }
+  ]
+  name "robot(2)"
+  boundingObject USE Основание
+  physics Physics {
+  }
+  controller ""
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  floorSize 20 20
+  floorTileSize 5 5
+}
