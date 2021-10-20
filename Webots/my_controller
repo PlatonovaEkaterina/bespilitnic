@@ -1,0 +1,351 @@
+from controller import Robot
+from controller import Motor
+from controller import DistanceSensor
+import math
+import sys
+import struct
+import random
+
+
+TIME_STEP = 32
+
+
+# Инициализируем робота
+robot = Robot()
+
+
+timestep = int(robot.getBasicTimeStep())
+
+
+# initialize receiver
+rec = []
+for i in range(1, 5):
+    rec.append(robot.getReceiver('rec' + str(i)))
+    rec[i - 1].enable(timestep)
+
+
+# initialize emmiter
+emit = robot.getEmitter('emit')
+
+
+# initialize distance sensor
+ds = robot.getDistanceSensor('ds')
+ds.enable(timestep)
+
+
+# initialize motor
+motor = robot.getMotor('lop')
+motor.setPosition(float('inf'))
+motor.setVelocity(0.0)
+
+
+# initialize inertial unit
+imu = robot.getInertialUnit('inertial unit')
+imu.enable(timestep)
+
+
+# Нужная высота подъема
+H_TARGET = 100.0
+
+# Задание нчальных констант
+MASS = 7.84
+g = 9.81
+thrustConstants = 1.34255008
+
+# Скорость вращения винтов, при которой квадрокптер зависнет в воздухе
+# F = 4 * thrustConstants * VELOCITY ** 2 = MASS * g
+VELOCITY_S = 0
+ANGLE_BLADE_S = 0.785398 # math.pi / 4
+VELOCITY_R = 3.6
+ANGLE_BLADE_R = 0
+
+# Ускорение вызываемое наклоном квадрокоптера вперед/назад
+# при соотношении скоростей винтов 995/1000
+ACCEL_STRAIGHT = 0.97875
+
+# Ускорение вызываемое наклоном квадрокоптера влево/вправо
+# при соотношении скоростей винтов 995/1000
+ACCEL_SIDE = 1.468125
+# ACCELARATION = [ACC_f, ACC_b, ACC_r, ACC_l]
+ACCELERATION = [ACCEL_STRAIGHT, ACCEL_STRAIGHT, ACCEL_SIDE, ACCEL_SIDE]
+
+# Коэффициент пропорциональности
+K_p = 0.001
+
+# Коэффициент дифференцильный
+K_d = -0.001
+
+
+# Полетное задание TASK (controllerArgs)
+TASK = sys.argv[1]
+num_motor = TASK[0]
+INDEX_TASK = 2 # смещение индекса таска
+#print(TASK)
+#print(TASK[INDEX_TASK])
+
+
+# Время, во время которого квадокоптер поднимается
+timeUp = 500
+# Время, которое будет отводиться на наклоны вперед/назад/...
+timeMove = [0, 0, 0, 0] # [forward, back, right, left]
+# Время между исполнением команд (выставляется после каждой команды)
+timeWait = 0
+# Время перед наклоном в обратную сторону для погашения скорости движения
+timeWait_move = 0
+
+
+# Разница между реальной высотой и желаемой
+# с учетом протокола локального голосования
+def comp_e():
+    return H_TARGET - neighbor_distance[int(num_motor) - 1] + comp_u()
+
+
+# Вычисление управляещего сигнала от протокола локального голосования
+# u = gamma * sum (a_i * (dist_i - dist_own))
+def comp_u():
+    u = 0
+    a_i = [1, 1, 1, 1]
+    gamma = 0.3
+    for i in range(4):
+        if i != int(num_motor) - 1:
+            u += gamma * a_i[i] * (neighbor_distance[i] - neighbor_distance[int(num_motor) - 1])
+    return u
+
+
+# Задание угла атаки лопасти
+def set_angle_blade(v_vertical):
+    global ANGLE_BLADE_R
+    # Арксинус дает нам угол, при котором квадрокоптер висит в воздухе
+    ANGLE_BLADE_R = math.asin((math.sqrt(g * MASS / (4 * thrustConstants))) ** 2 /
+                             VELOCITY_R ** 2 * math.sin(ANGLE_BLADE_S)) + K_p * comp_e() + K_d * v_vertical
+    # Прибавляем дифференциальный коэффициент и пропорциональный
+    
+    # Защита от слишком большого угла 
+    # (если квадрокоптер переворачивает, угол может поставиться отрицательный по формуле)
+    if ANGLE_BLADE_R < 0: 
+        ANGLE_BLADE_R = 0
+        print("Переворот " + num_motor)
+    if ANGLE_BLADE_R > math.pi / 2: 
+        ANGLE_BLADE_R = math.pi / 2
+        print("Переворот " + num_motor)
+
+
+# Функция исполнения движения
+def moving(i = 0):
+    global timeWait_move, ANGLE_BLADE_R
+    
+    # Отсчитываем время, пока надо совершать наклон
+    if timeMove[i] != 0: 
+        timeMove[i] -= 1
+        
+    # Задаем шаг винтов, при котором будет совершаться наклон
+    if timeMove[i] != 0:
+        if i == 0 and (num_motor == '1' or num_motor == '2') or i == 1 and (num_motor == '3' or num_motor == '4'):
+            ANGLE_BLADE_R *= 0.995
+        elif i == 2 and (num_motor == '2' or num_motor == '4') or i == 3 and (num_motor == '1' or num_motor == '3'):
+            ANGLE_BLADE_R *= 0.995
+            
+    # Выставляем задержку перед следующим действием
+    timeWait_move = 5
+    
+    
+# Функция задания движения влево/вправо/вперед/назад
+def set_time_move(distance, i = 0):
+    global timeWait
+    
+    # Задаем время наклона в определенную сторону, чтобы набрать скорость
+    timeMove[i] = round(math.sqrt(distance / ACCELERATION[i]))
+    # Даем тоже самое время на наклон в обратную сторону, чтобы погасить скорость
+    timeMove[i + 1] = round(math.sqrt(distance / ACCELERATION[i + 1]))
+    
+    # Выставляем задержку перед чтением седующей команды
+    timeWait = 600
+
+
+# Информация о соседях   
+# Скорость вращения
+neighbor_turn = [0, 0, 0, 0]
+# Дистания до земли
+neighbor_distance = [0, 0, 0, 0]
+    
+
+# Переменная для хранения высоты на предыдущем шаге Main Loop
+d1 = 0
+# Переменная для хранения направления движения
+move = ''
+
+# Задержка измеряемая в итерациях, n - количество итераций
+n = 10
+# Списки для записи n последних значений, чтобы передавть с задержкой
+distance_delay = [0 for i in range(n)]
+turn_delay = [0 for i in range(n)]
+
+
+# Main loop:
+while robot.step(timestep) != -1:
+    
+    # Может потом пригодиться, угол наклона по какой то оси
+    # alpha = imu.getRollPitchYaw()[1]
+    
+    # Считываем дистанцию до земли (высоту)
+    d = ds.getValue()
+    # Обрабатываем случай, если дистанция 0 (почему то он ее как макс значение видит)
+    if d == 100000:
+        d = 0
+        
+    # Записываем значение дистанции в список последних n значений на первое место
+    distance_delay.insert(0, d)
+    # Удаляем n + 1 значение из списка
+    distance_delay.pop()
+    
+    # Записываем нашу высоту    
+    neighbor_distance[int(num_motor) - 1] = d
+    
+    # Устанавливаем шаг винта через вертикальную скорость
+    # и информацию от соседей (глобальная переменная, поэтому не передается)
+    set_angle_blade((d - d1) / 0.01)
+    
+    # Обновляем высоту для использования в следующем шаге
+    d1 = d
+
+    # Подьем вверх, пока идет время квадрокоптер 
+    # поднимается на заданную высоту
+    if timeUp != 0:
+        timeUp -= 1
+        
+    # Отсчитываем задержку перед чтением новой команды
+    elif timeWait != 0:
+        timeWait -= 1
+        
+    # Задаем направление движения
+    else:
+        # Вперед
+        if TASK[INDEX_TASK] == 'f':
+            # Записываем направление движения
+            move = 'f'  
+            INDEX_TASK += 1 # двигаемся дальше по входной строке
+            distance = 0
+            while TASK[INDEX_TASK] != ' ':
+                # Считываем дистанцию из строки входной
+                distance *= 10
+                distance += int(TASK[INDEX_TASK]) 
+                INDEX_TASK += 1 # двигаемся дальше по входной строке
+            INDEX_TASK += 1 # двигаемся дальше по входной строке
+            # Устанавливаем время наклона вперед и затем назад
+            set_time_move(distance, 0) # timeMove = [0, 0, 0, 0] -> [forward, back, right, left]
+        
+        # Назад        
+        elif TASK[INDEX_TASK] == 'b':
+            distance = 0
+            # Записываем направление движения
+            move = 'b'  
+            INDEX_TASK += 1 # двигаемся дальше по входной строке
+            while TASK[INDEX_TASK] != ' ':
+                # Считываем дистанцию из строки входной
+                distance *= 10
+                distance += int(TASK[INDEX_TASK]) 
+                INDEX_TASK += 1 # двигаемся дальше по входной строке
+            INDEX_TASK += 1 # двигаемся дальше по входной строке
+            set_time_move(distance, 0) 
+            
+        # Вправо
+        elif TASK[INDEX_TASK] == 'r':
+            distance = 0
+            # Записываем направление движения
+            move = 'r'  
+            INDEX_TASK += 1 # двигаемся дальше по входной строке
+            while TASK[INDEX_TASK] != ' ':
+                # Считываем дистанцию из строки входной
+                distance *= 10
+                distance += int(TASK[INDEX_TASK]) 
+                INDEX_TASK += 1 # двигаемся дальше по входной строке
+            INDEX_TASK += 1 # двигаемся дальше по входной строке
+            set_time_move(distance, 2)
+        
+        # Влево
+        elif TASK[INDEX_TASK] == 'l':
+            distance = 0
+            # Записываем направление движения
+            move = 'l'
+            INDEX_TASK += 1 # двигаемся дальше по входной строке
+            while TASK[INDEX_TASK] != ' ':
+                # Считываем дистанцию из строки входной
+                distance *= 10
+                distance += int(TASK[INDEX_TASK]) 
+                INDEX_TASK += 1 # двигаемся дальше по входной строке
+            INDEX_TASK += 1 # двигаемся дальше по входной строке
+            set_time_move(distance, 2)              
+    
+    # Исполняем движение
+    
+    # Вперед
+    # Отсчитываем задержку перед наклоном
+    if timeWait_move != 0:
+        timeWait_move -= 1
+
+    elif move == 'f':
+        # Наклоняемся вперед
+        if timeMove[0] != 0:
+            moving(0)
+        # Наклоняемся назад
+        elif timeMove[1] != 0:
+            moving(1)
+            
+    # Назад  
+    elif move == 'b':
+        # Наклоняемся назад
+        if timeMove[1] != 0:
+            moving(1)
+        # Наклоняемся вперед
+        elif timeMove[0] != 0:
+            moving(0)
+            
+    # Вправо
+    elif move == 'r':
+        # Наклоняемся направо
+        if timeMove[2] != 0:
+            moving(2)
+        # Наклоняемся налево
+        elif timeMove[3] != 0:
+            moving(3)
+ 
+    # Влево
+    elif move == 'l':
+        # Наклоняемся налево
+        if timeMove[3] != 0:
+            moving(3)
+        # Наклоняемся направо
+        elif timeMove[2] != 0:
+            moving(2)
+
+    
+    # Высчитываем обороты в симуляторе, соотвествующие шагу винта в реальности
+    VELOCITY_S = math.sqrt(VELOCITY_R ** 2 * math.sin(ANGLE_BLADE_R) /
+                          math.sin(ANGLE_BLADE_S))
+    # Передаем значение скорости вращения в мотор
+    motor.setVelocity(VELOCITY_S)
+    
+    # Записываем значение скорости вращения в список последних n значений на первое место
+    turn_delay.insert(0, VELOCITY_S)
+    # Удаляем n + 1 значение из списка
+    turn_delay.pop()
+    
+    
+    # Передаем сообщение с задержкой в n итераций
+    # номер мотора, скорость вращения, дистанция до земли
+    message = struct.pack("ddd", float(num_motor), turn_delay[-1], distance_delay[-1])
+    emit.send(message)
+    
+    
+    # Принимаем сообщение
+    for i in range(4):
+        if rec[i].getQueueLength() > 0:
+            message = rec[i].getData()
+            dataList = struct.unpack("ddd", message)
+            neighbor_turn[int(dataList[0]) - 1] = dataList[1]
+            neighbor_distance[int(dataList[0]) - 1] = dataList[2]
+            rec[i].nextPacket()
+    
+    
+    if num_motor == '1':
+        print(neighbor_distance)
